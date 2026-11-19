@@ -197,6 +197,15 @@
       </p>
 
       <div class="toolbar">
+      <label for="climate-variable">Climate variable:</label>
+
+        <select id="climate-variable">
+          <option value="temperature">Temperature change (°C)</option>
+          <option value="precipitation">Precipitation change (%)</option>
+        </select>
+      </div>
+
+      <div class="toolbar">
         <label for="city">Choose a city</label>
         <select id="city" disabled>
           <option value="">Custom map location</option>
@@ -259,12 +268,13 @@
       <p>
         We selected CMIP6 ACCESS-CM2 temperature and precipitation data and
         made exploratory figures for our proposal.
-        For this prototype, we calculated projected near-surface warming at
-        each model grid cell.
-        We built a map that lets readers choose a location and find places
-        projected to warm by a similar amount.
-        We added a global distribution and a pin so readers can compare
-        their selection with the planet as a whole or with a second place.
+        For this prototype, we calculated projected near-surface warming and
+        precipitation changes at each model grid cell.
+        We built an interactive map that lets readers switch between temperature 
+        and precipitation, choose a location, and find other places projected to 
+        experience a similar change in the selected climate variable.
+        We added a global distribution and a pinning feature so readers can compare
+        their selection with the planet as a whole or with a second location.
       </p>
     </section>
 
@@ -274,11 +284,11 @@
         The hardest part will be showing what the selected location has in
         common with its matches when readers can see several kinds of
         information at once.
-        Readers need to distinguish similar warming from similar future
-        temperatures, because the selected places can start at very different
-        temperatures.
-        We also need to make the move from this map to our emissions and
-        precipitation comparisons feel connected.
+        Readers need to distinguish similar changes in temperature or precipitation from similar future
+        future temperatures or precipitations, because the selected places can start at very different
+        initial conditions.
+        We also need to make the move from warming and precipitations to other variables feel more connected
+        through a narrative.
         We plan to test whether readers can explain what a map match means
         and what changes when they pin a second place.
       </p>
@@ -298,6 +308,7 @@
       const comparison = get("comparison");
       const legend = document.querySelector(".legend");
       const resetButton = document.createElement("button");
+      const climateVariableMenu = get("climate-variable");
 
       resetButton.type = "button";
       resetButton.textContent = "Show all warming";
@@ -378,65 +389,191 @@
         ["Ulaanbaatar", 47.92, 106.92], ["Yakutsk", 62.03, 129.73],
       ];
 
-      const { lat, lon, warming } = await d3.json("./warming-grid.json");
+      // Load temperature and precipitation data
+      const [temperatureData, precipitationData] = await Promise.all([
+        d3.json("./warming-grid.json"),
+        d3.json("./precipitation-grid.json")
+      ]);
+
+      // Preserve the existing variables used by the temperature map
+      const { lat, lon, warming } = temperatureData;
+
+      // Verify that the precipitation grid matches the temperature grid
+      const gridsMatch =
+        JSON.stringify(lat) === JSON.stringify(precipitationData.lat) &&
+        JSON.stringify(lon) === JSON.stringify(precipitationData.lon);
+
+      if (!gridsMatch) {
+        throw new Error("Temperature and precipitation grids do not match.");
+      }
+
+      console.log("Both climate datasets loaded successfully!");
+      console.log("Precipitation grid:", precipitationData.precipitation.length, "rows");
+
+      // Current climate variable
+      let currentVariable = "temperature";
+
+      const climateConfig = {
+        temperature: {
+          label: "Projected warming",
+          unit: "°C",
+          tolerance: 0.25,
+          binWidth: 0.5,
+          breaks: [2, 3, 4, 5, 6, 8, 12],
+          colors: [
+            "#24529a", "#4384bb", "#83b8d7", "#c6ddec",
+            "#fbd3b5", "#f59a70", "#de5948", "#aa2338"
+          ]
+        },
+
+        precipitation: {
+          label: "Projected precipitation change",
+          unit: "%",
+          tolerance: 5,
+          binWidth: 10,
+          breaks: [-50, -25, -10, 0, 10, 25, 50],
+          colors: [
+            "#8c510a", "#bf812d", "#dfc27d", "#f6e8c3",
+            "#c7eae5", "#80cdc1", "#35978f", "#01665e"
+          ]
+        }
+      };
+
+      console.log("Temperature settings:", climateConfig.temperature);
+      console.log("Precipitation settings:", climateConfig.precipitation);
+
       const width = canvas.width;
       const height = canvas.height;
       const cellWidth = width / lon.length;
       const cellHeight = height / lat.length;
-      const tolerance = 0.25;
+      let tolerance = climateConfig[currentVariable].tolerance;
       const matchColor = "#65e2cc";
       const pinColor = "#ffbc69";
 
-      const cells = warming.flatMap((row, y) => row.map((value, x) => ({
-        x,
-        y,
-        value,
-        weight: Math.cos(lat[y] * Math.PI / 180),
-      })));
+      // Convert a climate grid into an array of cells
+      function createCells(grid) {
+          return grid.flatMap((row, y) =>
+            row.map((value, x) => ({
+              x,
+              y,
+              value,
+              weight: Math.cos(lat[y] * Math.PI / 180),
+            }))
+          );
+        }
+
+      // Prepare both climate datasets
+      const temperatureCells = createCells(temperatureData.warming);
+      const precipitationCells = createCells(precipitationData.precipitation);
+
+      // Initially display temperature
+      let cells = temperatureCells;
+
+      function createClimateState(variable) {
+        const config = climateConfig[variable];
+
+        const activeCells = variable === "temperature"
+          ? temperatureCells
+          : precipitationCells;
+
+        // Find the minimum and maximum values
+        const [minimum, maximum] = d3.extent(
+          activeCells,
+          cell => cell.value
+        );
+
+        // Calculate histogram boundaries
+        const binWidth = config.binWidth;
+
+        const domain = [
+          Math.floor((minimum - config.tolerance) / binWidth) * binWidth,
+          Math.ceil((maximum + config.tolerance) / binWidth) * binWidth
+        ];
+
+        // Create histogram bins
+        const bins = d3.bin()
+          .value(cell => cell.value)
+          .domain(domain)
+          .thresholds(
+            d3.range(domain[0] + binWidth, domain[1], binWidth)
+          )(activeCells);
+
+        // Create color scale
+        const colorScale = d3.scaleThreshold()
+          .domain(config.breaks)
+          .range(config.colors);
+
+        return {
+          cells: activeCells,
+          domain,
+          bins,
+          colorScale,
+          tolerance: config.tolerance
+        };
+      }
+
+      const temperatureState = createClimateState("temperature");
+      const precipitationState = createClimateState("precipitation");
+
+            // Initialize visualization using the selected climate variable
+      const initialState = createClimateState(currentVariable);
+
+      cells = initialState.cells;
+      let domain = initialState.domain;
+      let bins = initialState.bins;
+      let colorScale = initialState.colorScale;
+      tolerance = initialState.tolerance;
+
+      console.log("Temperature bins:", temperatureState.bins.length);
+      console.log("Precipitation bins:", precipitationState.bins.length);
+
+      console.log("Temperature domain:", temperatureState.domain);
+      console.log("Precipitation domain:", precipitationState.domain);
 
       const totalWeight = d3.sum(cells, cell => cell.weight);
-      const [minimum, maximum] = d3.extent(cells, cell => cell.value);
-      const domain = [
-        Math.floor((minimum - tolerance) * 2) / 2,
-        Math.ceil((maximum + tolerance) * 2) / 2,
-      ];
+  
 
-      const warmingBreaks = [2, 3, 4, 5, 6, 8, 12];
-      const warmingColors = [
-        "#24529a", "#4384bb", "#83b8d7", "#c6ddec",
-        "#fbd3b5", "#f59a70", "#de5948", "#aa2338",
-      ];
-      const warmingLabels = [
-        "<2°C", "2–<3°C", "3–<4°C", "4–<5°C",
-        "5–<6°C", "6–<8°C", "8–<12°C", "≥12°C",
-      ];
+      const legendLabels = {
+        temperature: [
+          "<2°C", "2–<3°C", "3–<4°C", "4–<5°C",
+          "5–<6°C", "6–<8°C", "8–<12°C", "≥12°C"
+        ],
 
-      const colorScale = d3.scaleThreshold()
-        .domain(warmingBreaks)
-        .range(warmingColors);
+        precipitation: [
+          "<−50%", "−50–<−25%", "−25–<−10%", "−10–<0%",
+          "0–<10%", "10–<25%", "25–<50%", "≥50%"
+        ]
+      };
 
-      const overviewLegend = `<strong>Projected warming</strong>` +
-        warmingLabels.map((label, i) => `
-          <span style="display:inline-flex;align-items:center;gap:0.35rem">
-            <span aria-hidden="true" style="width:0.85rem;height:0.85rem;
-              border-radius:0.15rem;background:${warmingColors[i]}"></span>
-            <span>${label.replaceAll("<", "&lt;")}</span>
-          </span>
-        `).join("");
+      function buildOverviewLegend() {
+        const config = climateConfig[currentVariable];
+        const labels = legendLabels[currentVariable];
+
+        return `<strong>${config.label}</strong>` +
+          labels.map((label, i) => `
+            <span style="display:inline-flex;align-items:center;gap:0.35rem">
+              <span aria-hidden="true" style="width:0.85rem;height:0.85rem;
+                border-radius:0.15rem;background:${config.colors[i]}"></span>
+              <span>${label.replaceAll("<", "&lt;")}</span>
+            </span>
+          `).join("");
+      }
+
       const projection = d3.geoEquirectangular()
         .scale(width / (2 * Math.PI))
         .translate([width / 2, height / 2]);
       const mapPath = d3.geoPath(projection, ctx);
 
-      const bins = d3.bin()
-        .value(cell => cell.value)
-        .domain(domain)
-        .thresholds(d3.range(domain[0] + 0.5, domain[1], 0.5))(cells);
-
       const cellAt = (x, y) => cells[y * lon.length + x];
-      const temperature = value => `${value.toFixed(2)}°C`;
+      const formatClimateValue = value => {
+        const unit = climateConfig[currentVariable].unit;
+        return `${value.toFixed(2)}${unit}`;
+      };
       const percent = weight => `${(100 * weight / totalWeight).toFixed(1)}%`;
-      const binLabel = bin => `${bin.x0.toFixed(1)}–${bin.x1.toFixed(1)}°C`;
+      const binLabel = bin => {
+        const unit = climateConfig[currentVariable].unit;
+        return `${bin.x0.toFixed(1)}–${bin.x1.toFixed(1)}${unit}`;
+      };
       const binShare = bin => 100 * d3.sum(bin, cell => cell.weight) / totalWeight;
 
       function coordinates(cell) {
@@ -446,36 +583,67 @@
           `${Math.abs(longitude).toFixed(1)}°${longitude < 0 ? "W" : "E"}`;
       }
 
-      const namedPlaces = cities.map(([name, latitude, longitude]) => {
-        const x = d3.leastIndex(lon, value => Math.abs(value - longitude));
-        const y = d3.leastIndex(lat, value => Math.abs(value - latitude));
-        return { name, cell: cellAt(x, y) };
-      });
+      let namedPlaces = [];
 
-      cityMenu.replaceChildren(new Option("Choose a city…", ""));
+      function rebuildCityMenu() {
+        // Match cities to grid cells in the current dataset
+        namedPlaces = cities.map(([name, latitude, longitude]) => {
+          const x = d3.leastIndex(
+            lon,
+            value => Math.abs(value - longitude)
+          );
 
-      for (const bin of bins) {
-        const places = namedPlaces.filter(({ cell }) =>
-          cell.value >= bin.x0 && cell.value < bin.x1
+          const y = d3.leastIndex(
+            lat,
+            value => Math.abs(value - latitude)
+          );
+
+          return { name, cell: cellAt(x, y) };
+        });
+
+        // Clear the previous city options
+        cityMenu.replaceChildren(
+          new Option("Choose a city…", "")
         );
-        if (!places.length) continue;
 
-        const group = document.createElement("optgroup");
-        group.label = `${binLabel(bin)} (${places.length} ${places.length === 1 ? "city" : "cities"})`;
+        // Group cities by their current climate values
+        for (const bin of bins) {
+          const places = namedPlaces.filter(({ cell }) =>
+            cell.value >= bin.x0 && cell.value < bin.x1
+          );
 
-        for (const { name, cell } of places) {
-          group.append(new Option(`${name} · ${temperature(cell.value)}`, name));
+          if (!places.length) continue;
+
+          const group = document.createElement("optgroup");
+
+          group.label = `${binLabel(bin)} (${places.length} ${
+            places.length === 1 ? "city" : "cities"
+          })`;
+
+          for (const { name, cell } of places) {
+            group.append(
+              new Option(
+                `${name} · ${formatClimateValue(cell.value)}`,
+                name
+              )
+            );
+          }
+
+          cityMenu.append(group);
         }
-
-        cityMenu.append(group);
       }
+
+      // Populate the dropdown initially
+      rebuildCityMenu();
 
       const chartWidth = 660;
       const chartHeight = 165;
       const chartTop = 12;
       const chartBottom = 108;
-      const xScale = d3.scaleLinear().domain(domain).range([55, 640]);
-      const yScale = d3.scaleLinear()
+      let xScale = d3.scaleLinear()
+      .domain(domain)
+      .range([55, 640]);
+      let yScale = d3.scaleLinear()
         .domain([0, d3.max(bins, binShare)])
         .nice()
         .range([chartBottom, chartTop]);
@@ -491,37 +659,18 @@
         .attr("fill", matchColor)
         .attr("opacity", 0.22);
 
-      const barGroups = svg.selectAll("g.warming-bin")
-        .data(bins.filter(bin => bin.length > 0))
-        .join("g")
-        .attr("class", "warming-bin")
-        .attr("tabindex", 0)
-        .attr("role", "button")
-        .attr("aria-label", bin => `${binLabel(bin)}, ${binShare(bin).toFixed(1)}% of Earth’s surface`)
-        .style("cursor", "pointer");
+      let barGroups = svg.selectAll("g.warming-bin")
+      let bars;
 
-      const bars = barGroups.append("rect")
-        .attr("x", bin => xScale(bin.x0) + 0.5)
-        .attr("y", bin => yScale(binShare(bin)))
-        .attr("width", bin => xScale(bin.x1) - xScale(bin.x0) - 1)
-        .attr("height", bin => chartBottom - yScale(binShare(bin)));
-
-      barGroups.append("rect")
-        .attr("x", bin => xScale(bin.x0))
-        .attr("y", chartTop)
-        .attr("width", bin => xScale(bin.x1) - xScale(bin.x0))
-        .attr("height", chartBottom - chartTop)
-        .attr("fill", "transparent");
-
-      svg.append("g")
+      const xAxisGroup = svg.append("g")
         .attr("transform", `translate(0,${chartBottom})`)
         .call(d3.axisBottom(xScale).ticks(7));
 
-      svg.append("g")
+      const yAxisGroup = svg.append("g")
         .attr("transform", "translate(55,0)")
         .call(d3.axisLeft(yScale).ticks(3).tickFormat(value => `${value}%`));
 
-      svg.append("text")
+      const xAxisLabel = svg.append("text")
         .attr("x", 347.5)
         .attr("y", 150)
         .attr("text-anchor", "middle")
@@ -614,15 +763,17 @@
              <span class="muted-key">■ <strong>Outside the range</strong></span>
              <span>○ <strong>Selected place</strong></span>
              <span class="pin-key">◇ <strong>Pinned place</strong></span>`
-          : overviewLegend;
+          : buildOverviewLegend();
+
+        const isTemperature = currentVariable === "temperature";
 
         get("location").textContent = selected
           ? (selected.name || coordinates(selected.cell))
           : selectedBin
-            ? `Warming range ${binLabel(selectedBin)}`
-            : "Global overview · Choose a location or a warming range to explore.";
+            ? `${isTemperature ? "Warming" : "Precipitation change"} range ${binLabel(selectedBin)}`
+            : "Global overview · Choose a location or a histogram range to explore.";
 
-        get("local-warming").textContent = selected ? temperature(selected.cell.value) : "—";
+        get("local-warming").textContent = selected ? formatClimateValue(selected.cell.value) : "—";
         get("similar-area").textContent = range ? percent(matchingWeight) : "—";
         get("warmer-area").textContent = selected ? percent(warmerWeight) : "—";
 
@@ -630,8 +781,20 @@
         get("warmer-area").parentElement.hidden = !selected;
         get("similar-area").parentElement.hidden = !range;
         get("similar-area").parentElement.lastChild.textContent = selectedBin
-          ? " of Earth’s surface falls in this warming range"
-          : " of Earth’s surface warms by a similar amount";
+          ? ` of Earth's surface falls in this ${isTemperature ? "warming" : "precipitation-change"} range`
+          : isTemperature
+            ? " of Earth's surface warms by a similar amount"
+            : " of Earth's surface has a similar precipitation change";
+
+        get("local-warming").parentElement.lastChild.textContent =
+          isTemperature
+            ? " Projected warming here"
+            : " Projected precipitation change here";
+
+        get("warmer-area").parentElement.lastChild.textContent =
+          isTemperature
+            ? " Of Earth's surface warms more"
+            : " Of Earth's surface has a greater precipitation change";
 
         rangeHighlight.attr("display", range ? null : "none");
         if (range) {
@@ -660,17 +823,99 @@
         comparison.hidden = !pinned;
 
         if (pinned) {
-          const pinnedText = `Pinned: ${pinned.name || coordinates(pinned.cell)} (${temperature(pinned.cell.value)}).`;
+          const pinnedText =
+            `Pinned: ${pinned.name || coordinates(pinned.cell)} ` +
+            `(${formatClimateValue(pinned.cell.value)}).`;
+
           if (selected) {
             const gap = selected.cell.value - pinned.cell.value;
-            const difference = Math.abs(gap) < 0.005
-              ? " Both values are within 0.005°C."
-              : ` The selected place warms ${temperature(Math.abs(gap))} ${gap > 0 ? "more" : "less"}.`;
+
+            let difference;
+
+            if (Math.abs(gap) < 0.005) {
+               difference = currentVariable === "temperature"
+                ? " Both values are within 0.005°C."
+                : " Both precipitation changes are within 0.005 percentage points.";
+            } else if (currentVariable === "temperature") {
+              difference =
+                ` The selected place warms ${formatClimateValue(Math.abs(gap))} ` +
+                `${gap > 0 ? "more" : "less"}.`;
+            } else {
+              difference =
+                ` The selected place has a precipitation change ` +
+                `${Math.abs(gap).toFixed(2)} percentage points ` +
+                `${gap > 0 ? "higher" : "lower"} than the pinned place.`;
+            }
+
             comparison.textContent = pinnedText + difference;
           } else {
             comparison.textContent = pinnedText;
           }
         }
+      }
+
+      function updateInterfaceText() {
+        const isTemperature = currentVariable === "temperature";
+
+        get("twin-heading").textContent = isTemperature
+          ? "Find Your Warming Twin"
+          : "Find Your Precipitation Twin";
+
+        get("twin-heading").nextElementSibling.textContent = isTemperature
+          ? "Start with the global warming map. Select a city or click the map to find places within 0.25°C of that location. Select a histogram bar to highlight places in its warming range."
+          : "Explore projected precipitation changes around the world. Select a city or click the map to find places within 5 percentage points of that location. Select a histogram bar to highlight places in its precipitation-change range.";
+
+        document.querySelector(".distribution > h3").textContent = isTemperature
+          ? "How common is this amount of warming?"
+          : "How common is this precipitation change?";
+
+        document.querySelector(".distribution > p").textContent = isTemperature
+          ? "Each bar represents a 0.5°C warming range. Its height shows the percentage of Earth's surface in that range. Hover for details or select a bar to map it."
+          : "Each bar represents a 10-percentage-point precipitation-change range. Its height shows the percentage of Earth's surface in that range. Hover for details or select a bar to map it.";
+
+        resetButton.textContent = isTemperature
+          ? "Show all warming"
+          : "Show all precipitation changes";
+
+        document.querySelector(".source").textContent = isTemperature
+          ? "CMIP6 ACCESS-CM2 · SSP5-8.5 · Near-surface air temperature change in 2081–2100 relative to 1995–2014. Cities use the nearest model grid cell. Surface shares are area-weighted."
+          : "CMIP6 ACCESS-CM2 · SSP5-8.5 · Precipitation change (%) in 2081–2100 relative to 1995–2014. Cities use the nearest model grid cell. Surface shares are area-weighted.";
+
+        canvas.setAttribute(
+          "aria-label",
+          isTemperature
+            ? "World map of projected temperature changes. Choose a city or use the histogram to explore."
+            : "World map of projected precipitation changes. Choose a city or use the histogram to explore."
+        );
+
+        svg.attr(
+          "aria-label",
+          isTemperature
+            ? "Select a temperature-change range to highlight it on the map"
+            : "Select a precipitation-change range to highlight it on the map"
+        );
+        }
+
+      function switchClimateVariable(variable) {
+        const state = createClimateState(variable);
+
+        // Update the active climate data
+        cells = state.cells;
+        domain = state.domain;
+        bins = state.bins;
+        colorScale = state.colorScale;
+        tolerance = state.tolerance;
+
+        // Reset selections when switching variables
+        selected = null;
+        selectedBin = null;
+        pinned = null;
+        cityMenu.value = "";
+
+        rebuildCityMenu();
+        rebuildHistogram();
+        updateInterfaceText();
+        update();
       }
 
       function cellUnderPointer(event) {
@@ -691,23 +936,102 @@
         update();
       }
 
-      barGroups
-        .on("pointermove", (event, bin) => {
-          showTooltip(event, `${binLabel(bin)} · ${binShare(bin).toFixed(1)}% of Earth’s surface`);
-        })
-        .on("pointerleave", hideTooltip)
-        .on("click", (_, bin) => selectBin(bin))
-        .on("keydown", (event, bin) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            selectBin(bin);
-          }
-        });
+
+      function rebuildHistogram() {
+        // Update the scales for the active climate variable
+        xScale = d3.scaleLinear()
+          .domain(domain)
+          .range([55, 640]);
+
+        yScale = d3.scaleLinear()
+          .domain([0, d3.max(bins, binShare)])
+          .nice()
+          .range([chartBottom, chartTop]);
+
+        // Remove the previous histogram bars
+        barGroups.remove();
+
+        // Create bars for the new climate variable
+        barGroups = svg.selectAll("g.warming-bin")
+          .data(bins.filter(bin => bin.length > 0))
+          .join("g")
+          .attr("class", "warming-bin")
+          .attr("tabindex", 0)
+          .attr("role", "button")
+          .attr("aria-label", bin =>
+            `${binLabel(bin)}, ${binShare(bin).toFixed(3)}% of Earth's surface`
+          )
+          .style("cursor", "pointer");
+
+        // Draw visible bars
+        bars = barGroups.append("rect")
+          .attr("x", bin => xScale(bin.x0) + 0.5)
+          .attr("width", bin =>
+            Math.max(0, xScale(bin.x1) - xScale(bin.x0) - 1)
+          )
+          .attr("height", bin =>
+            Math.max(1.5, chartBottom - yScale(binShare(bin)))
+          )
+          .attr("y", bin =>
+            chartBottom -
+            Math.max(1.5, chartBottom - yScale(binShare(bin)))
+          );;
+
+        // Add transparent interaction areas
+        barGroups.append("rect")
+          .attr("x", bin => xScale(bin.x0))
+          .attr("y", chartTop)
+          .attr("width", bin => xScale(bin.x1) - xScale(bin.x0))
+          .attr("height", chartBottom - chartTop)
+          .attr("fill", "transparent");
+
+        // Update the axes
+        xAxisGroup.call(d3.axisBottom(xScale).ticks(7));
+
+        yAxisGroup.call(
+          d3.axisLeft(yScale)
+            .ticks(3)
+            .tickFormat(value => `${value}%`)
+        );
+
+        // Update the horizontal-axis label
+        const config = climateConfig[currentVariable];
+
+        xAxisLabel.text(`${config.label} (${config.unit})`);
+
+        // Restore histogram interactions
+        barGroups
+          .on("pointermove", (event, bin) => {
+            showTooltip(
+              event,
+              `${binLabel(bin)} · ${binShare(bin).toFixed(3)}% of Earth's surface`
+            );
+          })
+          .on("pointerleave", hideTooltip)
+          .on("click", (_, bin) => selectBin(bin))
+          .on("keydown", (event, bin) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              selectBin(bin);
+            }
+          });
+      }
+
+      // Initialize the histogram and its interactions
+    rebuildHistogram();
 
       canvas.addEventListener("pointermove", event => {
         if (event.pointerType === "touch") return;
+
         const cell = cellUnderPointer(event);
-        showTooltip(event, `${coordinates(cell)} · ${temperature(cell.value)} projected warming`);
+        const variableLabel = currentVariable === "temperature"
+          ? "projected warming"
+          : "projected precipitation change";
+
+        showTooltip(
+          event,
+          `${coordinates(cell)} · ${formatClimateValue(cell.value)} ${variableLabel}`
+        );
       });
 
       canvas.addEventListener("pointerleave", hideTooltip);
@@ -745,7 +1069,16 @@
         update();
       });
 
+      climateVariableMenu.addEventListener("change", () => {
+        currentVariable = climateVariableMenu.value;
+
+        switchClimateVariable(currentVariable);
+
+        console.log("Switched to:", currentVariable);
+      });
+
       cityMenu.disabled = false;
+      updateInterfaceText();
       update();
 
       d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json")
