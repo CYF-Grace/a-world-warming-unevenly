@@ -1,21 +1,8 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=./part3/">
-  <title>A World Warming Unevenly</title>
-  <script>
-    window.location.replace("./part3/");
-  </script>
-</head>
-
-<body>
-  <p>
-    Continue to the
-    <a href="./part3/">regional climate stories</a>.
-  </p>
-</body>
-
-</html>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>一生的气候</title><link rel="stylesheet" href="style.css"><script src="d3.min.js"></script><script type="module" src="main.js"></script></head><body data-page="lifetime">
+<nav class="page-nav"><a aria-current="page" href="index.html">一生的气候</a><a href="regions.html">地区故事与改善</a><a href="yangtze.html">长江历史专题</a></nav>
+<header><a href="#">ONE ATMOSPHERE <span>一生的气候</span></a><span>不同的排放路径，共同的未来</span></header>
+<section class="intro"><p class="eyebrow">YOUR LIFETIME. OUR CHOICES.</p><h1>你长大后的世界，<br>可以少热一些。</h1><p>选择出生年份，沿着四条未来路径向下滚动。这一页只看你一生中的全球变化；具体地区的故事与比较，请前往独立的地区页面。</p><label>你出生于 <input id="birth" type="number" min="1920" max="2026" value="2004"> 年</label><button id="begin">进入未来</button><p id="status" role="status">正在检查网页数据…</p><label class="upload">载入导出的 climate.json <input id="upload" type="file" accept=".json"></label></section>
+<main id="experience"><div class="controls"><label>出生年份 <input id="birth-top" type="number" min="1920" max="2026" value="2004"></label><label class="age-control">在你 <strong id="age-label">66</strong> 岁时 <input id="age" type="range" min="11" max="96" value="66"></label><strong id="year">2070</strong><label>地图 <select id="mode"><option value="warming">温度变化</option><option value="avoided">相比很高排放，少升温多少</option></select></label></div>
+<div class="sticky"><div class="figure-head"><div><p class="eyebrow" id="scenario-code">SSP5-8.5</p><h2 id="scenario-title">很高排放的未来</h2></div><div class="metric"><strong id="global-value">—</strong><span>全球平均温度变化</span></div></div><div class="visuals"><section class="map-panel"><svg id="map" viewBox="0 0 900 480" aria-label="全球温度变化地图"></svg><svg id="legend" viewBox="0 0 900 52"></svg><p class="caption" id="baseline">数据尚未载入。空白区域不代表没有变化。</p></section><aside><h3>升温的代价，分布在哪里？</h3><p class="caption">同一尺度比较各地区。灰色圆点是很高排放，彩色圆点是当前路径。</p><svg id="gap" viewBox="0 0 410 430" aria-label="地区升温对比"></svg><p id="gap-summary"></p><p class="caption">这里衡量的是物理升温差异，不是收入不平等或实际经济损失。</p></aside></div></div>
+<div id="steps"><section class="step" data-scenario="ssp585"><p>很高排放 · SSP5-8.5</p><h2>同一片天空下，<br>并不是同样的升温。</h2><p>先看高排放路径下的全球地图，再比较右侧各地区的变化。责任与代价之间，没有简单的一一对应。</p></section><section class="step" data-scenario="ssp370"><p>高排放 · SSP3-7.0</p><h2>未来不是<br>只有一种走法。</h2><p>保持同一个年龄和年份。滚动只改变排放路径，让图上的差异可以直接比较。</p></section><section class="step" data-scenario="ssp245"><p>中等排放 · SSP2-4.5</p><h2>减少的每一点升温，<br>都与某个地方有关。</h2><p>在同一个年龄和年份比较全球路径。想了解具体地方的改善，可从导航进入地区页面。</p></section><section class="step" data-scenario="ssp126"><p>低排放 · SSP1-2.6</p><h2>共同的行动，<br>能够减少共同的损失。</h2><p>观察还有多少升温，以及避免了多少。地区差距是否缩小，由数据回答；减排也不意味着所有变化都会立即逆转。</p></section></div></main>
+<section class="ending"><p class="eyebrow">A SHARED FUTURE</p><h2>我们出生在不同的地方，<br>却共同生活在这个世界。</h2><p>向上滚动，换一个年龄，再看看不同的未来。<br><a href="regions.html">继续：看看具体地区能够少承受多少升温 →</a></p><details><summary>数据与方法</summary><div id="methods">网页只读取导出后的轻量温度数据，不直接加载几十 GB 的 NPZ。来源：NCAR CESM2 ScenarioMIP，r1i1p1f1。统一减去 SSP585 的 2015–2034 年平均温度场。出生年份用于年龄和日历年份换算，并不把不同人的出生年当作不同温度基准。地图显示居中十年平均，全球均值使用球面格点面积权重。区域统计采用导出程序中公开列出的经纬度框，包含框内海陆格点，不是国家行政区均值；定位点不是统计边界。缺失值不补造，原始月值存在 NaN 时相应年值保留 NaN。</div></details><p><a href="https://www.ipcc.ch/report/ar6/syr/">IPCC AR6</a> · <a href="https://www.cesm.ucar.edu/">NCAR CESM</a></p></section><div id="tooltip" role="status"></div></body></html>
