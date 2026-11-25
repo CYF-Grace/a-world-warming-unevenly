@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>CO₂ Emissions Inequality</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="./chart.js" defer></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #f4f7fb;
+      color: #203047;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1150px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #576b82;
+      line-height: 1.7;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 15px;
+      margin: 24px 0;
+      color: #334155;
+    }
+
+    button {
+      padding: 10px 18px;
+      background: #306d9e;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #23577f;
+    }
+
+    #year-slider {
+      flex: 1;
+      min-width: 180px;
+      accent-color: #306d9e;
+    }
+
+    #year-value {
+      font-weight: bold;
+      color: #24638f;
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid #d5e0ed;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 3px 14px rgba(30, 55, 85, 0.05);
+    }
+
+    #chart {
+      position: relative;
+    }
+
+    #chart svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    #chart .tick text {
+      fill: #475569;
+      font-size: 12px;
+    }
+
+    #chart .domain,
+    #chart .tick line {
+      stroke: #94a3b8;
+    }
+
+    .value-label {
+      fill: #203047;
+      font-size: 12px;
+    }
+
+    #inequality-summary {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #eef4fb;
+      border-left: 4px solid #df8546;
+      border-radius: 6px;
+      line-height: 1.7;
+      color: #243b53;
+    }
+
+    .tooltip {
+      display: none;
+      position: absolute;
+      background: white;
+      color: #203047;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+      white-space: pre-line;
+      pointer-events: none;
+      font-size: 13px;
+      z-index: 10;
+    }
+
+    .nigeria-annotation line {
+      stroke: #8057be;
+      stroke-width: 1.8;
+    }
+
+    .nigeria-annotation text {
+      fill: #8057be;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .note {
+      margin-top: 18px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <h1>CO₂ Emissions Inequality Across Countries</h1>
+
+    <p class="subtitle">
+      How differently do people contribute to global
+      carbon emissions depending on where they live?
+      Explore national average emissions per person.
+    </p>
+
+    <div class="controls">
+      <label for="year-slider">
+        Year: <span id="year-value">2024</span>
+      </label>
+
+      
+    <input
+      type="range"
+      id="year-slider"
+      min="1990"
+      max="2025"
+      value="2025"
+      step="1"
+    >
+
+
+      <button id="play-button">Play</button>
+    </div>
+
+    <div class="panel">
+      <div id="inequality-summary"></div>
+      <div id="chart"></div>
+    </div>
+
+    <p class="note">
+      Source: Our World in Data / Global Carbon Budget.
+      Values represent national average annual CO₂ emissions
+      per capita, not individual consumption footprints.
+      Country comparisons are limited to the selected countries.
+    </p>
+
+  </div>
+</body>
+</html>

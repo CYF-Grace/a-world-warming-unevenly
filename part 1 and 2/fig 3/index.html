@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>Different Emissions, Shared Warming</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="./chart.js" defer></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #0b1422;
+      color: #f1f5f9;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1150px;
+      margin: auto;
+    }
+
+    h1 { margin-bottom: 8px; }
+
+    .subtitle {
+      color: #a9b9cb;
+      line-height: 1.7;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+
+    button {
+      background: #235b88;
+      color: white;
+      border: 1px solid #528dbd;
+      border-radius: 6px;
+      padding: 12px 18px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #397bae;
+    }
+
+    #replay-button {
+      background: #25374c;
+      border-color: #52667d;
+    }
+
+    .year-label {
+      margin-left: auto;
+      color: #a9b9cb;
+      font-weight: bold;
+    }
+
+    .panel {
+      background: #101f32;
+      border: 1px solid #304258;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    #metric-title {
+      margin: 0 0 8px;
+    }
+
+    #metric-description {
+      color: #a9b9cb;
+      line-height: 1.6;
+    }
+
+    #chart { position: relative; }
+
+    #chart svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .axis text {
+      fill: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .axis line,
+    .axis path {
+      stroke: #718399;
+    }
+
+    .bar { cursor: pointer; }
+
+    .value-label {
+      fill: white;
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    .tooltip {
+      display: none;
+      position: absolute;
+      background: rgba(8, 16, 28, 0.97);
+      border: 1px solid #8495a8;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-line;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #insight {
+      margin-top: 20px;
+      padding: 18px;
+      background: #1b3048;
+      border-left: 4px solid #e67a55;
+      border-radius: 5px;
+      line-height: 1.7;
+    }
+
+    .note {
+      color: #93a7bd;
+      font-size: 13px;
+      line-height: 1.7;
+      margin-top: 18px;
+    }
+
+    #status {
+      color: #93c5fd;
+      margin-top: 14px;
+    }
+
+
+    /* Light-mode theme */
+
+    body {
+    background: #f4f7fb;
+    color: #203047;
+    }
+
+    .subtitle,
+    #metric-description,
+    .note {
+    color: #576b82;
+    }
+
+    button {
+    background: #306d9e;
+    border-color: #306d9e;
+    }
+
+    button:hover {
+    background: #23577f;
+    }
+
+    #replay-button {
+    background: white;
+    color: #306d9e;
+    border-color: #a9bfd2;
+    }
+
+    #replay-button:hover {
+    background: #e9f2fb;
+    }
+
+    .panel {
+    background: white;
+    border-color: #d5e0ed;
+    box-shadow: 0 3px 14px rgba(30, 55, 85, 0.05);
+    }
+
+    .axis text {
+    fill: #475569;
+    }
+
+    .axis line,
+    .axis path {
+    stroke: #94a3b8;
+    }
+
+    .value-label {
+    fill: #203047;
+    }
+
+    .tooltip {
+    background: white;
+    color: #203047;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    }
+
+    #insight {
+    background: #eef4fb;
+    color: #243b53;
+    border-left-color: #8057be;
+    }
+
+    #status {
+    color: #35678e;
+    }
+
+    .nigeria-annotation line {
+    stroke: #8057be;
+    stroke-width: 1.8;
+    }
+
+    .nigeria-annotation text {
+    fill: #8057be;
+    font-size: 13px;
+    font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <h1>Different Emissions, Shared Warming</h1>
+
+    <p class="subtitle">
+      Countries contribute different amounts of CO₂ to
+      the atmosphere, but climate change affects countries
+      around the world. Compare annual emissions with
+      local temperature anomalies.
+    </p>
+
+    <div class="controls">
+      <button id="toggle-button">
+        Show Temperature
+      </button>
+
+      <button id="replay-button">
+        Replay Transition
+      </button>
+
+      <span class="year-label" id="year-label"></span>
+    </div>
+
+    <div class="panel">
+      <h2 id="metric-title">Annual CO₂ Emissions</h2>
+
+      <p id="metric-description"></p>
+
+      <div id="chart">
+        <div class="tooltip"></div>
+      </div>
+
+      <div id="insight"></div>
+    </div>
+
+    <div id="status">Loading datasets...</div>
+
+    <p class="note">
+      Sources: Our World in Data, Global Carbon Budget,
+      and Copernicus Climate Change Service.
+      Annual CO₂ emissions are territorial emissions,
+      excluding land-use change. Temperature anomalies
+      are measured relative to each country's 1991–2020
+      average. The two metrics have different units and
+      scales. A country's local temperature anomaly is not
+      caused solely by that country's emissions.
+    </p>
+
+  </div>
+</body>
+</html>

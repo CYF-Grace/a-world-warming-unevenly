@@ -1,0 +1,247 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Industrial CO₂ Emissions</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script src="map.js" defer></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #0b1422;
+      color: #f1f5f9;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 30px;
+    }
+
+    .subtitle {
+      color: #a9b9cb;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 24px 0;
+    }
+
+    button, select {
+      background: #213247;
+      color: white;
+      border: 1px solid #52667d;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button:hover, select:hover {
+      background: #344b66;
+    }
+
+    #map {
+      position: relative;
+      background: #101f32;
+      border: 1px solid #304258;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    #map svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .country {
+      fill: #263b50;
+      stroke: #61758a;
+      stroke-width: 0.5;
+    }
+
+    .source {
+      cursor: pointer;
+      stroke: #fff3d6;
+      stroke-width: 0.5;
+    }
+
+    .tooltip {
+      position: absolute;
+      display: none;
+      background: rgba(10, 20, 35, 0.96);
+      color: white;
+      border: 1px solid #8495a8;
+      padding: 12px 15px;
+      border-radius: 8px;
+      pointer-events: none;
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 270px;
+      z-index: 10;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .gradient {
+      width: 160px;
+      height: 12px;
+      border-radius: 4px;
+      background: linear-gradient(
+        to right,
+        #ffffb2,
+        #fecc5c,
+        #fd8d3c,
+        #e31a1c,
+        #800026
+      );
+    }
+
+    #status {
+      margin-top: 14px;
+      color: #9fc8df;
+      font-size: 14px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #90a3b8;
+      line-height: 1.7;
+      margin-top: 18px;
+    }
+
+
+    /* Light-mode theme */
+
+    body {
+    background: #f4f7fb;
+    color: #203047;
+    }
+
+    .subtitle {
+    color: #576b82;
+    }
+
+    button,
+    select {
+    background: white;
+    color: #203047;
+    border-color: #b9ccdd;
+    }
+
+    button:hover,
+    select:hover {
+    background: #e9f2fb;
+    }
+
+    #map {
+    background: #e8f3fc;
+    border-color: #c7d8e8;
+    box-shadow: 0 3px 14px rgba(30, 55, 85, 0.05);
+    }
+
+    .country {
+    fill: #d5e2ed;
+    stroke: #a3b8ca;
+    stroke-width: 0.5;
+    }
+
+    .source {
+    stroke: white;
+    stroke-width: 0.35;
+    }
+
+    .tooltip {
+    background: rgba(255, 255, 255, 0.98);
+    color: #203047;
+    border-color: #bdcedd;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    }
+
+    .legend {
+    color: #475569;
+    }
+
+    #status {
+    color: #35678e;
+    }
+
+    .note {
+    color: #64748b;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Global Industrial CO₂ Emissions</h1>
+
+    <p class="subtitle">
+      Explore major CO₂-emitting industrial facilities
+      around the world and a conceptual visualization
+      of how emissions can disperse.
+    </p>
+
+    <div class="controls">
+      <label for="sector-filter">Industry:</label>
+
+      <select id="sector-filter">
+        <option value="all">All selected industries</option>
+        <option value="power">Power generation</option>
+        <option value="manufacturing">Manufacturing</option>
+      </select>
+
+      <button id="play-button">Pause Animation</button>
+    </div>
+
+    <div id="map">
+      <div class="tooltip"></div>
+    </div>
+
+    <div id="status">Loading emissions data...</div>
+
+    <div class="legend">
+      <span>Lower emissions</span>
+      <div class="gradient"></div>
+      <span>Higher emissions</span>
+    </div>
+
+    <p class="note">
+      Dot size and color represent estimated annual CO₂ emissions,
+      not the physical area of each facility.
+      Particle movement is illustrative and does not represent
+      measured winds, CO₂ concentrations, or an atmospheric forecast.
+      Source: Climate TRACE, 2024 estimated emissions.
+      CC BY 4.0.
+    </p>
+  </div>
+</body>
+</html>
