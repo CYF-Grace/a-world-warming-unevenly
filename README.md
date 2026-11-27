@@ -1,19 +1,39 @@
 # A World Warming Unevenly · Team 404
 
-| 部分 | 入口 | 内容与维护范围 |
+## Project structure and responsibilities
+
+| Section | Entry point | Content and responsibility |
 |---|---|---|
-| 总导航 | index.html | 四个 tab；统一由 Yifei 维护 |
-| Part 1 | part1/index.html | Bill：排放不平等图与 chart.js |
-| Part 2 | part2/index.html | Bill：industry/ 工业排放图；warming/ 排放与升温图 |
-| Part 3 | part3/index.html | Yifei：蜂窝地图、Brazil、California、India；Mianzhi：中国放 china/ |
-| Part 4 | part4/index.html | 尚未制作，当前仅占位，不包含中国页面 |
+| Main navigation | `index.html` | Four-part navigation, maintained by Yifei |
+| Part 1 | `part1/index.html` | Bill: CO₂ emissions inequality |
+| Part 2 | `part2/index.html` | Bill: industrial emissions in `industry/`; emissions and warming in `warming/` |
+| Part 3 | `part3/index.html` | Yifei: hexagonal world map, Brazil, California, and India; Mianzhi: China in `part3/china/` |
+| Part 4 | `part4/index.html` | Mianzhi: not yet completed; currently a placeholder |
 
-## 中国文件
+## China section
 
-Mianzhi 的全部现有文件集中在 part3/china/：index.html 为中国入口，yangtze.html 为历史专题，regions.html 为情景比较，其余 JS、CSS、world.geojson、D3 和两个导出脚本放在同目录。JSON 生成后也放在此目录：yangtze.json、climate.json。二者当前未随仓库提交；不使用虚构数据代替。不要提交大型原始 NPZ。
+Mianzhi’s existing China-related files are grouped under `part3/china/`:
 
-## 团队协作
+- `index.html`: China section entry point.
+- `yangtze.html`: historical Yangtze-region chapter.
+- `regions.html`: scenario comparison page.
+- Supporting JavaScript, CSS, `world.geojson`, D3, and both data-export scripts are kept in the same directory.
 
-只编辑自己负责的目录。不要让每个成员都替换根目录 index.html。共享入口修改通过 PR 协商；提交前先同步 main，再创建个人分支。iframe 隔离运行时脚本和样式；Git 中的覆盖仍靠目录分工和审查避免。使用 Live Server 或 GitHub Pages，不要双击文件测试全部功能。
+Place the generated `yangtze.json` and `climate.json` files in this directory as well. Missing data should remain explicitly identified; do not substitute fabricated values.
 
-不保留旧的 part 1 and 2/ 文件夹；图表均已移动到各自部分。.DS_Store 属于系统目录元数据，已移出项目并忽略。
+Do not commit large raw NPZ files.
+
+The China section belongs to Part 3. Part 4 is a separate section assigned to Mianzhi and has not yet been completed.
+
+## Team workflow
+
+- Edit files within your assigned directories.
+- Coordinate changes to shared entry points through pull requests.
+- Yifei maintains the root `index.html`; do not overwrite it with an individual section’s homepage.
+- Sync with `main` before starting work, create a working branch, and submit a pull request when ready.
+- Independent iframe documents isolate scripts and styles at runtime. Directory ownership and code review are still needed to prevent files from being overwritten in Git.
+- Preview the site using Live Server or GitHub Pages rather than opening HTML files directly.
+
+Bill’s figures have been moved from the former `part 1 and 2/` directory into their respective part folders. The old directory is no longer used.
+
+`.DS_Store` is macOS directory metadata, not project content, and is excluded through `.gitignore`.
